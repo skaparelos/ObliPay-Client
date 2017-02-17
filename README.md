@@ -11,9 +11,13 @@ Your money is stored locally at your computer. Like cash in your wallet.
 
 ## How does it work?
 You deposit some amount of money (in any currency) using the website and in exchange you get a credential (think of it as a coin) that corresponds to that amount. That credential has some cryptographic properties, two of which are unforgeability and unlinkability. That credential that you get is stored locally in your computer. Now that you have that credential (or many others) you can do one of the following with it:
+
 -Split: one credential to two credentials such that the sum of their values is equal to the value of the credential you had before.
+
 -Combine: two credentials to one, such that the value of the newly formed credential is equal to the sum of the value of the two.
+
 -Spend: transfer a credential to a friend of yours, effectively transferring money.
+
 -Withdraw: open a credential to the service and have the service give you back the amount of money that this credential corresponds to.
 
 ## Can you give a real-life example scenario of how it works? 
