@@ -3,7 +3,7 @@ from petlib.bn import Bn
 from petlib.ec import EcGroup, Bn, EcPt
 from binascii import hexlify, unhexlify
 from hashlib import sha256
-import msgpack
+import msgpack # pip install msgpack-python
 import utils
 import base64
 

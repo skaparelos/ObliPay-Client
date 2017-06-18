@@ -18,7 +18,7 @@ proofTime = 0  # time spent making the proofs
 def getSession():
     t0 = time.time()
     s = requests.Session()
-    r = s.get(url + '/session/')
+    s.get(url + '/session/')
     t1 = time.time() - t0
     global commServerTime
     commServerTime += t1
@@ -348,9 +348,7 @@ def splitACL(coin, split1, split2):
 
 
 def deposit(testing = False):
-    # TODO In production this function shouldn't work! If it works then anyone
-    # can create ACLs!
-    """ Mints an ACL. This function is not to be used in the final result. """
+    """ Mints an ACL """
 
     if testing == False:
         amount = raw_input("Enter the amount to make a coin:")
@@ -379,7 +377,7 @@ def deposit(testing = False):
     if encoded_rsp == "-1":
         print "An error occurred during ACLRegistration"
         return -1
-    # print "deposit received=", encoded_rsp
+    print "deposit received=", encoded_rsp
     decoded_rsp = crypto.unmarshall(encoded_rsp)
     (rnd, a, a1p, a2p, issuer_pub) = decoded_rsp
     coin_stuff = (rnd, a, a1p, a2p)
@@ -423,7 +421,7 @@ def ACL_protocol(amount, issuer_pub, user_state, session, coin_stuff):
     encoded_rcv = send(session, 4, encoded)  # send
     # print "len val2 =", len(encoded_rcv)
     # decode response
-    # print "ACL_protocol response=", encoded_rcv
+    print "ACL_protocol response=", encoded_rcv
     (msg_from_issuer,) = crypto.unmarshall(encoded_rcv)
 
     ### Signatures ###
