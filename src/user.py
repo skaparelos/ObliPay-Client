@@ -38,18 +38,17 @@ def send(session, phase, encodedData):
     s = session
     r = None
 
-    if phase == 1:
+    if phase == "split":
         r = s.post(url + '/acl/split/', data = {'data': str(encodedData)})
-    elif phase == 2:
+    elif phase == "combine":
         r = s.post(url + '/acl/combine/', data = {'data': str(encodedData)})
-    elif phase == 3:
+    elif phase == "deposit":
         r = s.post(url + '/acl/deposit/', data = {'data': str(encodedData)})
-    elif phase == 4:
+    elif phase == "validation2":
         r = s.post(url + '/acl/validation2/', data = {'data': str(encodedData)})
-    elif phase == 5:
-        r = requests.post(url + '/acl/verification/',
-                          data = {'data': str(encodedData)})
-    elif phase == 6:
+    elif phase == "verify":
+        r = requests.post(url + '/acl/verification/', data = {'data': str(encodedData)})
+    elif phase == "spend":
         r = s.post(url + '/acl/spend/', data = {'data': str(encodedData)})
 
     t1 = time.time() - t0
@@ -60,7 +59,6 @@ def send(session, phase, encodedData):
         return "couldn't connect"
     else:
         return r.text
-
 
 def showWallet():
     dbUser.printACLs()
@@ -200,7 +198,7 @@ def spendACL(coin):
     toPack = [h0gamma, h1gamma, ggamma, zeta1, proof, coin.getACL()]
     encoded = crypto.marshall(toPack)
     # print "Spend size in bytes sent:", len(encoded)
-    encoded_rcv = send(session, 6, encoded)
+    encoded_rcv = send(session, "spend", encoded)
     if encoded_rcv == "-1":
         print "couldn't spend coin"
         return -1
@@ -279,7 +277,7 @@ def splitACL(coin, split1, split2):
     encoded = crypto.marshall(toPack)
     # send
     # print "len splitacl registration  =", len(encoded)
-    encoded_rcv = send(session, 1, encoded)
+    encoded_rcv = send(session, "split", encoded)
     # print "len prep-val1 (server to client) =", len(encoded_rcv)
     if encoded_rcv == "-1":
         print "ACLSplit didn't work"
@@ -311,7 +309,7 @@ def splitACL(coin, split1, split2):
     ### ACL Validation 2 ###
     encoded = crypto.marshall([msg_to_issuer_p, msg_to_issuer_pp])  # pack
     # print "len prep - val1. (client to server)=", len(encoded)
-    encoded_rcv = send(session, 4, encoded)  # send
+    encoded_rcv = send(session, "validation2", encoded)
     # print "len validation2 =",len(encoded_rcv)
     # decode response
     (msg_from_issuer_p, msg_from_issuer_pp) = crypto.unmarshall(encoded_rcv)
@@ -353,8 +351,7 @@ def deposit(testing = False):
     if testing == False:
         amount = raw_input("Enter the amount to make a coin:")
         amount = int(amount)
-
-        # measure time stuff
+        # measure time
         timeSent = time.time()
 
     if testing == True:
@@ -371,7 +368,7 @@ def deposit(testing = False):
     encoded = crypto.marshall([user_commit])
     # send
     # print "len deposit registration  =", len(encoded)
-    encoded_rsp = send(session, 3, encoded)
+    encoded_rsp = send(session, "deposit", encoded)
     # print "len prep-val1 (server to client)=", len(encoded_rsp)
     # decode response
     if encoded_rsp == "-1":
@@ -418,7 +415,7 @@ def ACL_protocol(amount, issuer_pub, user_state, session, coin_stuff):
     ### ACL Validation 2 ###
     encoded = crypto.marshall([msg_to_issuer])  # pack
     # print "len prep-val1 (client to server)=", len(encoded)
-    encoded_rcv = send(session, 4, encoded)  # send
+    encoded_rcv = send(session, "validation2", encoded)
     # print "len val2 =", len(encoded_rcv)
     # decode response
     print "ACL_protocol response=", encoded_rcv
@@ -560,7 +557,7 @@ def combineACL(coin1, coin2):
     # send public stuff to the service
     encoded = crypto.marshall([nizkPublic, proof])
     # print "len combine registration = ",len(encoded)
-    encoded_rcv = send(session, 2, encoded)
+    encoded_rcv = send(session, "combine", encoded)
     # print "len prep-val1 (Server to client)=",len(encoded_rcv)
     if encoded_rcv == "-1":
         print "An error occurred. The service could not combine the two coins"
@@ -610,7 +607,7 @@ def verifyACL():
     toPack = [issuer_pub, numAttr, signature, sig]
     encoded = crypto.marshall(toPack)
     # send them
-    encoded_rcv = send(None, 5, encoded)
+    encoded_rcv = send(None, "verify", encoded)
     # decode response
     m = crypto.unmarshall(encoded_rcv)
 
