@@ -1,1 +1,3 @@
-SERVER_URL = 'ip_goes_here'
+SERVER_URL = "http://127.0.0.1:5000"
+DEBUG_MODE = 1
+TESTING_MODE = 0

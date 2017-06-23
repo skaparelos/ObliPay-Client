@@ -1,8 +1,9 @@
 import sqlite3
-import crypto
 import os.path
 import sys
 import os
+
+#TODO check for SQLinjections
 
 '''
     This file is responsible for handling database interactions.

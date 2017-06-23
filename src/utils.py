@@ -1,9 +1,14 @@
 from petlib.ec import EcPt, EcGroup
 from petlib.bn import Bn
 import msgpack
+import settings
 
-""" Code taken from: http://petlib.readthedocs.io/en/latest/_modules/petlib/pack.html """
+def debug_print(p):
+    if settings.DEBUG_MODE:
+        print "DEBUG: " + p
 
+# Code taken from:
+# http://petlib.readthedocs.io/en/latest/_modules/petlib/pack.html
 def default(obj):
     # Serialize Bn objects
     if isinstance(obj, Bn):
@@ -30,7 +35,8 @@ def default(obj):
 
     raise TypeError("Unknown type: %r" % (obj,))
 
-
+# Code taken from:
+# http://petlib.readthedocs.io/en/latest/_modules/petlib/pack.html
 def ext_hook(code, data):
 
     # Decode Bn types
