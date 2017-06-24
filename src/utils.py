@@ -7,6 +7,7 @@ def debug_print(p):
     if settings.DEBUG_MODE:
         print "DEBUG: " + p
 
+
 # Code taken from:
 # http://petlib.readthedocs.io/en/latest/_modules/petlib/pack.html
 def default(obj):
@@ -34,6 +35,7 @@ def default(obj):
         return msgpack.ExtType(2, packed_nid)
 
     raise TypeError("Unknown type: %r" % (obj,))
+
 
 # Code taken from:
 # http://petlib.readthedocs.io/en/latest/_modules/petlib/pack.html

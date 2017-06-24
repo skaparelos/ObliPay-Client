@@ -26,13 +26,11 @@ def BL_setup(Gid = 713):
     hs = [G.hash_to_point(("h%s" % i).encode("utf8")) for i in range(2)] # 2-> hs[0], hs[1]
     return (G, q, g, h, z, hs)
 
-#set once
 pparams = BL_setup()
 
 
 def BL_user_setup(attributes):
-    params = pparams
-    (_, q, _, _, _, hs) = params
+    (_, q, _, _, _, hs) = pparams
     L1 = attributes[0]
 
     R = q.random()
@@ -73,10 +71,7 @@ def BL_user_preparation(user_state, msg_from_issuer):
     user_state.zet2 = zet2
     user_state.tau = tau
     user_state.eta = eta
-
     user_state.rnd = rnd
-    #print "gam=", gam
-    #print "rnd=", rnd
 
 
 def BL_user_validation(user_state, issuer_pub, msg_to_user, message=b''):
@@ -177,10 +172,9 @@ def BL_show_zk_proof(params, num_attrib):
 
 
 def BL_user_prove_cred(user_state):
-    params = pparams
     (_, _, g, _, z, hs) = pparams
     #zk = BL_show_zk_proof(user_state.params, len(user_state.attributes))
-    zk = BL_show_zk_proof(params, len(user_state.attributes))
+    zk = BL_show_zk_proof(pparams, len(user_state.attributes))
 
     env = ZKEnv(zk)
 
@@ -207,34 +201,4 @@ def BL_user_prove_cred(user_state):
         assert zk.verify_proof(env.get(), sig, strict=False)
 
     return sig
-
-
-def BL_verify_cred(issuer_pub, num_attributes, signature, sig):
-    params = pparams
-    (_, _, g, _, z, hs) = params
-
-    m = BL_check_signature(params, issuer_pub, signature) 
-    if m == False:
-        return False   
-    #assert m != False
-
-    (m, zet, zet1, zet2, om, omp, ro, ro1p, ro2p, mu) = signature
-
-    zk = BL_show_zk_proof(params, num_attributes)
-
-    env = ZKEnv(zk)
-
-    # Constants
-    env.g = g
-    env.z = z
-    env.zet = zet
-    env.zet1 = zet1
-    env.hs = hs[:num_attributes + 1]
-
-    ## Extract the proof
-    res = zk.verify_proof(env.get(), sig)
-    assert res
-
-    return m
-
 

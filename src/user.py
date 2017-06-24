@@ -1,6 +1,5 @@
 import acl
 import crypto
-import petlib
 import wallet as modWallet
 import database as dbUser
 import requests
@@ -8,7 +7,7 @@ import time
 import settings
 from utils import debug_print
 
-pparams = acl.BL_setup()
+pparams = acl.pparams
 url = settings.SERVER_URL
 
 # profiling variables:
