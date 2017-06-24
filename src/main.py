@@ -6,7 +6,6 @@ def printMenuOptions():
     print ' 1) Show wallet'
     print ' 2) See Total Balance'
     print ' 3) Mint ACL'
-    # print ' 4) Spend ACL'
     print ' 4) Split ACL'
     print ' 5) Combine ACL'
     print ' 6) Spend ACL'
@@ -15,7 +14,6 @@ def printMenuOptions():
 
 def mainMenu():
     choice = 0
-
     while choice != "-1":
 
         printMenuOptions()
@@ -30,16 +28,11 @@ def mainMenu():
         elif choice == "3":
             user.deposit()
 
-        # elif choice == "4":
-        #	user.verifyACL()
-
         elif choice == "4":
             user.protocolSetup("split")
-        # user.splitACL()
 
         elif choice == "5":
             user.protocolSetup("combine")
-        # user.combineACL()
 
         elif choice == "6":
             user.protocolSetup("spend")

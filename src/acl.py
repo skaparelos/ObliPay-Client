@@ -4,19 +4,17 @@
 #   Proceedings of the 2013 ACM SIGSAC conference on Computer & communications security. 
 #  ACM, 2013.
 
-from hashlib import sha256
 from base64 import b64encode
-
-from petlib.bn import Bn
-from petlib.ec import EcGroup, EcPt
-
+from petlib.ec import EcPt
 from genzkp import *
-import crypto
+import settings
+
 
 class StateHolder(object):
     pass
 
-def BL_setup(Gid = 713):
+
+def BL_setup(Gid = settings.CLIENT_GID):
     # Parameters of the BL schemes
     G = EcGroup(Gid)
     q = G.order()
@@ -25,6 +23,7 @@ def BL_setup(Gid = 713):
     z = G.hash_to_point(b"z")
     hs = [G.hash_to_point(("h%s" % i).encode("utf8")) for i in range(2)] # 2-> hs[0], hs[1]
     return (G, q, g, h, z, hs)
+
 
 pparams = BL_setup()
 

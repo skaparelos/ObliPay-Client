@@ -31,19 +31,21 @@ def send(session, phase, encodedData):
     s = session
     r = None
 
-    r = s.post(url + '/acl/' + phase + '/', data={'data': str(encodedData)})
+    try:
+        r = s.post(url + '/acl/' + phase + '/', data={'data': str(encodedData)})
+    except requests.exceptions.RequestException as e:
+        print e
+        exit(1)
 
     t1 = time.time() - t0
     global commServerTime
     commServerTime += t1
 
-    if r is None:
-        return "couldn't connect"
-    else:
-        return r.text
+    return r.text
+
 
 def showWallet():
-    dbUser.printACLs()
+    dbUser.printACs()
 
 
 def seeTotalBalance():
@@ -52,13 +54,11 @@ def seeTotalBalance():
 
 def _getCoinData(coin):
     """ Gets coin data needed to complete the ACL protocol """
-    denom = coin.getDenomination()
-    # zeta1
+    denomination = coin.getDenomination()
     zeta1 = coin.getZeta1()
     # gamma, rnd, R
     secret_data = coin.getSecretData()
-    (gamma, rnd, R) = secret_data
-    return denom, zeta1, secret_data
+    return denomination, zeta1, secret_data
 
 
 def _getToTheGamma(gamma):
@@ -75,26 +75,16 @@ def protocolSetup(protocol):
     (spend, split, combine) with the right parameters"""
 
     if protocol == "spend":
-        timeSent = time.time()
+        time_sent = time.time()
 
-        (id, coin) = getAC()
-        if coin == -1:
-            print "sorry couldn't fetch coin"
-            return -1
-
-        denomination, _, _ = _getCoinData(coin)
-        # execute the spend protocol with the server
+        (_, coin) = choose_coin()
         spendACL(coin)
 
     if protocol == "split":
-        timeSent = time.time()
+        time_sent = time.time()
 
         # Get a coin to split
-        (id, coin) = getAC()
-        if coin == -1:
-            print "Sorry, couldn't fetch that coin"
-            return -1
-
+        (coin_id, coin) = choose_coin()
         denomination, _, _ = _getCoinData(coin)
 
         # ask for how much to take out and convert to int
@@ -109,46 +99,41 @@ def protocolSetup(protocol):
             print "An error occurred. ACL protocol, couldn't complete"
             return -1
 
+        # Invalidate the parent coin
+        dbUser.invalidateACL(coin_id)
+
         # print time it took to mint coin
-        timeDiff = time.time() - timeSent
-        print "Time diff = ", timeDiff
+        time_diff = time.time() - time_sent
+        debug_print("Time diff = " + str(time_diff))
 
         # Print success message to the user
         print "Created 2 coins:"
         print "1.Coin %s of value: %d" % (coin1.getAlias(), split1)
         print "2.Coin %s of value: %d" % (coin2.getAlias(), split2)
 
-        # Invalidate the parent coin
-        dbUser.invalidateACL(id)
-
     if protocol == "combine":
-        timeSent = time.time()
+        time_sent = time.time()
 
-        ## Choose coins
-        # Get 1st coin to combine
-        (id1, coin1) = getAC()
-        # Get 2nd coin to combine
-        (id2, coin2) = getAC()
+        # Choose 2 coins
+        (coin1_id, coin1) = choose_coin()
+        (coin2_id, coin2) = choose_coin()
 
         # Coins must not be the same
         assert coin1 != coin2
-
-        # Check that both coins actually exist
-        if coin1 == -1 or coin2 == -1:
-            print "Sorry, couldn't fetch coins."
-            return -1
+        assert coin1_id != coin2_id
 
         # execute the combine protocol with the server
         coin = combineACL(coin1, coin2)
 
+        dbUser.invalidateACL(coin1_id)
+        dbUser.invalidateACL(coin2_id)
+
         # print time it took to mint coin
-        timeDiff = time.time() - timeSent
-        print "Time diff = ", timeDiff
+        time_diff = time.time() - time_sent
+        debug_print("Time diff = " + str(time_diff))
 
         print "Created a new coin:"
         print "Coin %s of value: %d" % (coin.getAlias(), coin.getDenomination())
-        dbUser.invalidateACL(id1)
-        dbUser.invalidateACL(id2)
 
 
 def testSpend(coin, tries):
@@ -172,10 +157,8 @@ def spendACL(coin):
     session = getSession()
 
     t0 = time.time()
-    proof = crypto.proveSpend(pparams, gamma, R, denomination, rnd, toTheGamma,
-                              zeta1)
-    assert crypto.verifySpend(pparams, (h0gamma, h1gamma, ggamma, zeta1),
-                              proof) == True
+    proof = crypto.proveSpend(pparams, gamma, R, denomination, rnd, toTheGamma, zeta1)
+    assert crypto.verifySpend(pparams, (h0gamma, h1gamma, ggamma, zeta1), proof) == True
 
     toPack = [h0gamma, h1gamma, ggamma, zeta1, proof, coin.getACL()]
     encoded = crypto.marshall(toPack)
@@ -198,9 +181,8 @@ def testCombineACL(coin, tries):
 def testSplitACL(coin, tries):
     """ run a deposit protocol to get a 'coin' and call this function
 	    with the 'coin' as a parameter """
-    denomination, _, _ = _getCoinData(coin)
     split1 = 0
-    split2 = denomination
+    split2 = coin.getDenomination()
     coin1, coin2 = splitACL(coin, split1, split2)
 
     for i in range(0, tries):
@@ -239,37 +221,36 @@ def splitACL(coin, split1, split2):
     proofTime += t1
 
     ### ACL Registration ###
-    # ACL Registration for coin1 warm up
+    # Prepate ACL Registration for coin1
     user_state_p = acl.StateHolder()
     user_state_p.C = Cp
     user_state_p.attributes = [split1]
     user_state_p.R = Rp
-    # ACL Registration for coin2 warm up
+    # Prepare ACL Registration for coin2
     user_state_pp = acl.StateHolder()
     user_state_pp.C = Cpp
     user_state_pp.attributes = [split2]
     user_state_pp.R = Rpp
 
     ### ACL Preparation - ACL Validation 1 ###
+    # pack
+    toPack = [h0gamma, h1gamma, ggamma, zeta1, Cp, Cpp, proof, proofp, proofpp, coin.getACL()]
+    encoded = crypto.marshall(toPack)
+    debug_print("len splitACL registration = " +  str(len(encoded)))
     # get Session. Session lasts for a minute
     session = getSession()
-    # pack
-    toPack = [h0gamma, h1gamma, ggamma, zeta1, Cp, Cpp, proof, proofp, proofpp,
-              coin.getACL()]
-    encoded = crypto.marshall(toPack)
-    # send
-    debug_print("len splitacl registration = " +  str(len(encoded)))
-    encoded_rcv = send(session, "split", encoded)
-    debug_print("len prep-val1 (server to client) = " + str(len(encoded_rcv)))
-    if encoded_rcv == "-1":
-        print "ACLSplit didn't work"
+    encoded_response = send(session, "split", encoded)
+    debug_print("len prep-val1 (server to client) = " + str(len(encoded_response)))
+    if encoded_response == "-1":
+        print "splitACL didn't work"
         return -1
+    
     # decode response
     # In this case a response is 3 things:
     # rnd, a, a1p, a2p for coin1
     # rnd, a, a1p, a2p for coin2
     # issuer_pub
-    decoded_rcv = crypto.unmarshall(encoded_rcv)
+    decoded_rcv = crypto.unmarshall(encoded_response)
     coin1_stuff = decoded_rcv[0]
     coin2_stuff = decoded_rcv[1]
     issuer_pub = decoded_rcv[2]
@@ -291,10 +272,10 @@ def splitACL(coin, split1, split2):
     ### ACL Validation 2 ###
     encoded = crypto.marshall([msg_to_issuer_p, msg_to_issuer_pp])  # pack
     debug_print("len prep - val1. (client to server) = " + str(len(encoded)))
-    encoded_rcv = send(session, "validation2", encoded)
-    debug_print("len validation2 =" + str(len(encoded_rcv)))
+    encoded_response = send(session, "validation2", encoded)
+    debug_print("len validation2 =" + str(len(encoded_response)))
     # decode response
-    (msg_from_issuer_p, msg_from_issuer_pp) = crypto.unmarshall(encoded_rcv)
+    (msg_from_issuer_p, msg_from_issuer_pp) = crypto.unmarshall(encoded_response)
 
     ### Signatures ###
     signature_p = acl.BL_user_validation2(user_state_p, msg_from_issuer_p)
@@ -349,12 +330,12 @@ def deposit(testing = False):
     encoded = crypto.marshall([user_commit])
 
     # send
-    debug_print("len deposit registration  =" +  str(len(encoded)))
+    debug_print("len deposit registration = " +  str(len(encoded)))
     encoded_rsp = send(session, "deposit", encoded)
-    debug_print("len prep-val1 (server to client)= " + str(len(encoded_rsp)))
+    debug_print("len prep-val1 (server to client) = " + str(len(encoded_rsp)))
     if encoded_rsp == "-1":
         raise ValueError, "Something went wrong in the service."
-    debug_print("deposit received= " + encoded_rsp)
+    debug_print("deposit received = " + encoded_rsp)
     decoded_rsp = crypto.unmarshall(encoded_rsp)
     (rnd, a, a1p, a2p, issuer_pub) = decoded_rsp
     coin_stuff = (rnd, a, a1p, a2p)
@@ -362,7 +343,7 @@ def deposit(testing = False):
     # if the code reaches here, then we can do the ACL protocol
     coin = ACL_protocol(amount, issuer_pub, user_state, session, coin_stuff)
     if coin == -1:
-        raise ValueError, "Something went wrong while executing the ACLProtocol"
+        raise ValueError, "Something went wrong while executing the ACL protocol"
 
     coin_, amount, alias = coin
     if settings.TESTING_MODE == False:
@@ -548,15 +529,9 @@ def transferACL():
     """ Converts an ACL into a format that can be transferred and exports it in a file """
 
     # Get a coin to transfer
-    (id, coin) = getAC()
-
-    # Check that coin exists
-    if coin == -1:
-        print "Sorry, couldn't fetch that coin."
-        return -1
-
+    (id, coin) = choose_coin()
     coin.save2transfer()
-    # invalidate it?
+    # TODO: invalidate it?
     # dbUser.invalidateACL(id)
     return 0
 
@@ -565,12 +540,7 @@ def verifyACL():
     """ Spends a coin """
 
     # get a coin
-    (id, coin) = getAC()
-
-    # Check that the coin really exists
-    if coin == -1:
-        print "Sorry, couldn't fetch that coin."
-        return -1
+    (coin_id, coin) = choose_coin()
 
     # Get details of the coin in the right format
     (issuer_pub, numAttr, signature, sig) = coin.getACL()
@@ -589,9 +559,9 @@ def verifyACL():
 
     # TODO: ask for coin deletion. The reason is that if something goes wrong
     # by auto deleting coins then the user might lose coins
-    deleteCoin = raw_input("Delete coin " + str(id) + " ?[y/n]")
+    deleteCoin = raw_input("Delete coin " + str(coin_id) + " ?[y/n]")
     if deleteCoin == "y":
-        dbUser.invalidateACL(id)
+        dbUser.invalidateACL(coin_id)
     return 0
 
 
@@ -611,9 +581,20 @@ def getLastACL(numofIds):
     return -1
 
 
-def getAC():
-    dbUser.printACLs()
-    coinChoice = raw_input("Set Main ACL:")
-    coinChoice = int(coinChoice)
+def choose_coin():
+    """ Choose a coin to use """
 
-    return (coinChoice, modWallet.ACL.loadAC(coinChoice))
+    # show all coins
+    dbUser.printACs()
+
+    # let the user choose one coin using the id
+    coin_choice = raw_input("Set Main ACL:")
+    try:
+        coin_id = int(coin_choice)
+    except ValueError:
+        print 'Please enter an integer.'
+
+    # load the coin id
+    coin = modWallet.ACL.loadAC(coin_id)
+
+    return (coin_id, coin)

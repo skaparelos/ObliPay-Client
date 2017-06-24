@@ -77,30 +77,25 @@ def insert2DB_ACL(queryParams):
     return returnStatus
 
 
-def printACLs():
+def printACs():
     conn, cur = db
     cur.execute(""" SELECT id,alias,denomination FROM acl """)
 
-    print "-------ACLs:-------"
+    print "------- Coins: -------"
     for r in cur.fetchall():
         (id, alias, denom) = r
         print str(id) + ") " + alias + "->\tValue:" + str(denom) 
-    #conn.close()
     return 0
 
 
-def getACLById(id):
+def getACById(id):
     assert type(id) == type(1)
-    #assert 0<= id <= 100000 #TODO find overflow position
-
     (conn, cur) = db
     param = (str(id),)
-    cur.execute(""" SELECT denomination,packed_data,secret_data FROM acl 
-                WHERE id = (?)""", param)
+    cur.execute(""" SELECT denomination,packed_data,secret_data FROM acl WHERE id = (?)""", param)
     coin = cur.fetchone()
-    #conn.close()
     if coin is None:
-        return -1
+        raise Exception("Coin id doesn't exist.")
     return coin
 
 
@@ -137,7 +132,6 @@ def getLastACLid(numofIds):
         (id1,), (id2,) = cur.fetchall()
         ret = id1, id2
 
-    #conn.close()
     return ret 
 
 

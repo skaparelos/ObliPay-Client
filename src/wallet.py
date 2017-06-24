@@ -67,9 +67,7 @@ class ACL(object):
     @staticmethod
     def loadAC(id):
 
-        coinTemp = dbUser.getACLById(id)
-        if coinTemp == -1:
-            return -1
+        coinTemp = dbUser.getACById(id)
 
         denomination = int(coinTemp[0])
         packedData = coinTemp[1]
